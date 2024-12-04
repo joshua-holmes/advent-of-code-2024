@@ -33,5 +33,34 @@ pub fn stuff(input: []u8, alloc: std.mem.Allocator) !void {
         sum += if (n1 > n2) n1 - n2 else n2 - n1;
     }
 
-    std.debug.print("{d}\n", .{sum});
+    // part 2
+
+    var count: u32 = 0;
+    var value: ?u32 = null;
+    var r_i: usize = 0;
+    var sum2: u32 = 0;
+
+    for (list1.items) |left| {
+        if (r_i < list2.items.len) {
+            if (value == null or left > value.?) {
+                count = 0;
+                // move right slider to a number equal to or bigger than left
+                while (r_i < list2.items.len and list2.items[r_i] < left) r_i += 1;
+                // set value to current position or last element, if we ran out
+                value = if (r_i < list2.items.len) list2.items[r_i] else list2.getLast();
+                // count current value, if we ran out though, we don't care about the count and it will be 0
+                while (r_i < list2.items.len and value == list2.items[r_i]) {
+                    count += 1;
+                    r_i += 1;
+                }
+            }
+        }
+
+        std.debug.print("left: {d}  value: {any}  count: {d}\n", .{ left, value, count });
+
+        if (value == left) sum2 += left * count;
+    }
+
+    std.debug.print("part 1 -> {d}\n", .{sum});
+    std.debug.print("part 2 -> {d}\n", .{sum2});
 }
