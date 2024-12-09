@@ -22,6 +22,15 @@ const Direction = enum {
             Direction.left,
         };
     }
+
+    fn diag_outward() [4]Direction {
+        return .{
+            Direction.up_left,
+            Direction.up_right,
+            Direction.down_left,
+            Direction.down_right,
+        };
+    }
 };
 
 const Point = struct {
@@ -109,5 +118,31 @@ pub fn stuff(input: []u8, alloc: std.mem.Allocator) !void {
         }
     }
 
-    std.debug.print("{any}\n", .{p1});
+    // iterate through grid and search diagonally outward from 'A'
+    var p2: usize = 0;
+    for (0..@intCast(size.y)) |y| {
+        for (0..@intCast(size.x)) |x| {
+            const point = Point{ .x = @intCast(x), .y = @intCast(y) };
+            // if this point in the grid doesn't match the first character of our target, skip
+            if (chars.items[point.to_index(&size)] != 'A')
+                continue;
+            var diag_as: u4 = 0;
+            var diag_am: u4 = 0;
+            for (Direction.diag_outward()) |dir| {
+                if (search(chars.items, dir, &point, &size, "AS", 0))
+                    diag_as += 1;
+                if (search(chars.items, dir, &point, &size, "AM", 0))
+                    diag_am += 1;
+            }
+            if (diag_as != 2 or diag_am != 2)
+                continue;
+            const search1 = search(chars.items, Direction.up_left, &point, &size, "AS", 0);
+            const search2 = search(chars.items, Direction.down_right, &point, &size, "AS", 0);
+            if (search1 == search2)
+                continue;
+            p2 += 1;
+        }
+    }
+
+    std.debug.print("part 1 -> {d}\npart 2 -> {d}\n", .{ p1, p2 });
 }
