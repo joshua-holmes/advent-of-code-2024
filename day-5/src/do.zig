@@ -120,14 +120,45 @@ fn parse_section_2(input: []u8, alloc: std.mem.Allocator) !std.ArrayList(std.Arr
     return updates;
 }
 
+// for part 2
+fn reorder_and_return_mid(update: []u32, rule_sets: *const std.AutoHashMap(u32, RuleSet)) u32 {
+    for (update, 0..update.len) |page, i| {
+        if (rule_sets.get(page)) |rule| {
+            for (0..update.len) |j| {
+                if (i == j) continue;
+                const set = if (j > i) rule.before else rule.after;
+                // if `update.items[j]` is found before `page` and found in the `after` list, it's a violation`
+                if (set.get(update[j]) != null) {
+                    update[i] = update[j];
+                    update[j] = page;
+                    return reorder_and_return_mid(update, rule_sets);
+                }
+            }
+        }
+    }
+    const index = (update.len / 2) - ((update.len + 1) % 2);
+    return update[index];
+}
+
 /// Perform main business logic.
 pub fn stuff(input: []u8, alloc: std.mem.Allocator) !void {
     const rule_pairs = try parse_section_1(input, alloc);
-    const rules = try make_rules(rule_pairs.items, alloc);
+    defer rule_pairs.deinit();
+    var rules = try make_rules(rule_pairs.items, alloc);
+    defer {
+        var iter = rules.valueIterator();
+        while (iter.next()) |rs| rs.deinit();
+        rules.deinit();
+    }
     const updates = try parse_section_2(input, alloc);
+    defer {
+        for (updates.items) |update| update.deinit();
+        updates.deinit();
+    }
 
     // for each page in each update, iterate through neighbor pages and find any rule violations
     var p1: u32 = 0;
+    var p2: u32 = 0;
     update_blk: for (updates.items) |update| {
         for (update.items, 0..update.items.len) |page, i| {
             if (rules.get(page)) |rule| {
@@ -135,7 +166,13 @@ pub fn stuff(input: []u8, alloc: std.mem.Allocator) !void {
                     if (i == j) continue;
                     const set = if (j > i) rule.before else rule.after;
                     // if `update.items[j]` is found before `page` and found in the `after` list, it's a violation`
-                    if (set.get(update.items[j]) != null) continue :update_blk;
+                    if (set.get(update.items[j]) != null) {
+                        var update_copy = try std.ArrayList(u32).initCapacity(alloc, update.items.len);
+                        defer update_copy.deinit();
+                        for (update.items) |p| try update_copy.append(p);
+                        p2 += reorder_and_return_mid(update_copy.items, &rules);
+                        continue :update_blk;
+                    }
                 }
             }
         }
@@ -145,4 +182,5 @@ pub fn stuff(input: []u8, alloc: std.mem.Allocator) !void {
     }
 
     std.debug.print("part 1 -> {d}\n", .{p1});
+    std.debug.print("part 2 -> {d}\n", .{p2});
 }
